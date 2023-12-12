@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <rdma/fabric.h>
 #include <rdma/fi_domain.h>
 #include <rdma/fi_endpoint.h>
