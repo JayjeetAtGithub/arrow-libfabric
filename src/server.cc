@@ -1,29 +1,30 @@
 #include <iostream>
+#include <mercury.h>
 
-#include <rdma/fabric.h>
-#include <rdma/fi_domain.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
-#include <rdma/fi_tagged.h>
-#include <rdma/fi_rma.h>
-#include <rdma/fi_errno.h>
+static hg_class_t*     hg_class   = NULL; /* the mercury class */
+static hg_context_t*   hg_context = NULL; /* the mercury context */
 
-int main() {
-    std::cout << "Hello, world!" << std::endl;
+int main(int argc, char **argv) {
+    hg_return_t ret;
 
-    struct fi_info *hints, *fi;
-    hints = fi_allocinfo();
-    hints->ep_attr->type = FI_RDM;
-    hints->caps = FI_MSG | FI_TAGGED | FI_RMA;
-    hints->mode = FI_CONTEXT;
-    hints->fabric_attr->prov_name = strdup("rxm");
-    int err = fi_getinfo(FI_VERSION(1,0), NULL, NULL, 0, hints, &fi);
+    hg_class = HG_Init("verbs", HG_TRUE);
+    assert (hg_class != NULL);
 
-    if (!err) {
-        // traverse the fi_info linked list and print out the
-        // information for each fabric interface
-        for (fi_info *cur_fi = fi; cur_fi; cur_fi = cur_fi->next) {
-            std::cout << "Fabric interface: " << cur_fi->fabric_attr->prov_name << std::endl;
-        }
-    }
+    char hostname[128];
+    hg_addr_t self_addr;
+    HG_Addr_self(hg_class, &self_addr);
+    HG_Addr_to_string(hg_class, hostname, &self_addr);
+    printf("Server running at address %s\n",hostname);
+    HG_Addr_free(hg_class, self_addr);
+
+    hg_context = HG_Context_create(hg_class);
+    assert(hg_context != NULL);
+
+    ret = HG_Context_destroy(hg_context);
+    assert(ret == HG_SUCCESS);
+
+    ret = HG_Finalize(hg_class);
+    assert(ret == HG_SUCCESS);
+
+    return 0;
 }
