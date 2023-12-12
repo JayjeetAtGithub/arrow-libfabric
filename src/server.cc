@@ -16,8 +16,8 @@ int main() {
     hints->ep_attr->type = FI_RDM;
     hints->caps = FI_MSG | FI_TAGGED | FI_RMA;
     hints->mode = FI_CONTEXT;
-    hints->fabric_attr->prov_name = strdup(“psm2”);
-    err = fi_getinfo(FI_VERSION(1,0), NULL, NULL, 0, hints, &fi);
+    hints->fabric_attr->prov_name = strdup("rxm");
+    int err = fi_getinfo(FI_VERSION(1,0), NULL, NULL, 0, hints, &fi);
 
     if (!err) {
         // traverse the fi_info linked list and print out the
