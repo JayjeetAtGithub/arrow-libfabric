@@ -3,27 +3,15 @@
 #include <stdlib.h>
 #include <mercury.h>
 
-static hg_class_t*     hg_class   = NULL; /* the mercury class */
-static hg_context_t*   hg_context = NULL; /* the mercury context */
+typedef struct {
+    hg_class_t*   hg_class;
+    hg_context_t* hg_context;
+    int           max_rpcs;
+    int           num_rpcs;
+} server_data_t;
 
-/* after serving this number of rpcs, the server will shut down. */
-static const int TOTAL_RPCS = 10;
-/* number of RPCS already received. */
-static int num_rpcs = 0;
-
-/* 
- * hello_world function to expose as an RPC.
- * This function just prints "Hello World"
- * and increment the num_rpcs variable.
- *
- * All Mercury RPCs must have a signature
- *   hg_return_t f(hg_handle_t h)
- */
 hg_return_t hello_world(hg_handle_t h);
 
-/*
- * main function.
- */
 int main(int argc, char** argv)
 {
     hg_return_t ret;
@@ -33,46 +21,47 @@ int main(int argc, char** argv)
         exit(0);
     }
 
-    hg_class = HG_Init(argv[1], HG_TRUE);
-    assert(hg_class != NULL);
+    server_data_t server_data = {
+        .hg_class = NULL,
+        .hg_context = NULL,
+        .max_rpcs = 4,
+        .num_rpcs = 0
+    };
+
+    server_data.hg_class = HG_Init(argv[1], HG_TRUE);
+    assert(server_data.hg_class != NULL);
 
     char hostname[128];
     hg_size_t hostname_size = 128;
     hg_addr_t self_addr;
-    HG_Addr_self(hg_class, &self_addr);
-    HG_Addr_to_string(hg_class, hostname, &hostname_size, self_addr);
+    HG_Addr_self(server_data.hg_class, &self_addr);
+    HG_Addr_to_string(server_data.hg_class, hostname, &hostname_size, self_addr);
     printf("Server running at address %s\n",hostname);
-    HG_Addr_free(hg_class, self_addr);
+    HG_Addr_free(server_data.hg_class, self_addr);
 
-    hg_context = HG_Context_create(hg_class);
-    assert(hg_context != NULL);
+    server_data.hg_context = HG_Context_create(server_data.hg_class);
+    assert(server_data.hg_context != NULL);
 
-    /* Register the RPC by its name ("hello").
-     * The two NULL arguments correspond to the functions user to
-     * serialize/deserialize the input and output parameters
-     * (hello_world doesn't have parameters and doesn't return anything, hence NULL).
-     */
-    hg_id_t rpc_id = HG_Register_name(hg_class, "hello", NULL, NULL, hello_world);
+    hg_id_t rpc_id = HG_Register_name(server_data.hg_class, "hello", NULL, NULL, hello_world);
 
-    /* We call this function to tell Mercury that hello_world will not
-     * send any response back to the client.
-     */
-    HG_Registered_disable_response(hg_class, rpc_id, HG_TRUE);
+    /* Register data with the RPC handler */
+    HG_Register_data(server_data.hg_class, rpc_id, &server_data, NULL);
+
+    HG_Registered_disable_response(server_data.hg_class, rpc_id, HG_TRUE);
 
     do
     {
         unsigned int count;
         do {
-            ret = HG_Trigger(hg_context, 0, 1, &count);
+            ret = HG_Trigger(server_data.hg_context, 0, 1, &count);
         } while((ret == HG_SUCCESS) && count);
-        HG_Progress(hg_context, 100);
-    } while(num_rpcs < TOTAL_RPCS);
-    /* Exit the loop if we have reached the given number of RPCs. */
+        HG_Progress(server_data.hg_context, 100);
+    } while(server_data.num_rpcs < server_data.max_rpcs);
 
-    ret = HG_Context_destroy(hg_context);
+    ret = HG_Context_destroy(server_data.hg_context);
     assert(ret == HG_SUCCESS);
 
-    ret = HG_Finalize(hg_class);
+    ret = HG_Finalize(server_data.hg_class);
     assert(ret == HG_SUCCESS);
 
     return 0;
@@ -83,9 +72,17 @@ hg_return_t hello_world(hg_handle_t h)
 {
     hg_return_t ret;
 
+    /* Get the hg_class_t instance from the handle */
+    const struct hg_info *info = HG_Get_info(h);
+    hg_class_t* hg_class = info->hg_class;
+    hg_id_t     rpc_id   = info->id;
+
+    /* Get the data attached to the RPC handle */
+    server_data_t* server_data = (server_data_t*)HG_Registered_data(hg_class, rpc_id);
+
     printf("Hello World!\n");
-    num_rpcs += 1;
-    /* We are not going to use the handle anymore, so we should destroy it. */
+    server_data->num_rpcs += 1;
+
     ret = HG_Destroy(h);
     assert(ret == HG_SUCCESS);
     return HG_SUCCESS;
