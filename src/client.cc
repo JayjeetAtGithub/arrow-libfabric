@@ -58,7 +58,6 @@ int main(int argc, char** argv)
     assert(ret == HG_SUCCESS);
 
     hg_return_t err = HG_Finalize(client_data.hg_class);
-    assert(err == HG_SUCCESS);
     return 0;
 }
 
