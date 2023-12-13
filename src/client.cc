@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <mercury.h>
-#include <mercury.h>
 #include <mercury_bulk.h>
 #include <mercury_proc_string.h>
 #include <mercury_macros.h>
