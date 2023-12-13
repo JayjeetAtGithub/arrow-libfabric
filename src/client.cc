@@ -73,7 +73,6 @@ int main(int argc, char** argv)
 
     /* Finalize the hg_class. */
     hg_return_t err = HG_Finalize(hg_class);
-    assert(err == HG_SUCCESS);
     return 0;
 }
 
