@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     server_data_t server_data = {
         .hg_class = NULL,
         .hg_context = NULL,
-        .max_rpcs = 4,
+        .max_rpcs = 1000,
         .num_rpcs = 0
     };
 
